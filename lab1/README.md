@@ -1,7 +1,7 @@
 ## Сборка
 С использованием double
 ```bash
-cmake -S . -B build -DUSE_FLOAT=ON
+cmake -S . -B build -DUSE_FLOAT=OFF
 cmake --build build
 ./build/main
 ```
@@ -12,7 +12,7 @@ cmake --build build
 
 С использованием float
 ```bash
-cmake -S . -B build -DUSE_FLOAT=OFF
+cmake -S . -B build -DUSE_FLOAT=ON
 cmake --build build
 ./build/main
 ```
