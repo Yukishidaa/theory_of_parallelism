@@ -24,18 +24,19 @@ void init_vector(std::vector<double> &b)
         b[i] = N + 1;
 }
 // compare left part with right part and make correction
-void correction(std::vector<double> &Ax, std::vector<double> &x, std::vector<double> &x_update, std::vector<double> &b)
+void correction(std::vector<double> &Ax, std::vector<double> &x, std::vector<double> &x_update, std::vector<double> &b, int num_threads)
 {
+#pragma omp parallel for num_threads(num_threads)
     for (size_t i = 0; i < x_update.size(); i++)
     {
         x_update[i] = x[i] - tau * (Ax[i] - b[i]);
     }
 }
 // calc an error
-double calc_error(std::vector<double> &x, std::vector<double> &x_update)
+double calc_error(std::vector<double> &x, std::vector<double> &x_update, int num_threads)
 {
     double error = 0.0;
-
+#pragma omp parallel for reduction(+ : error) num_threads(num_threads)
     for (int i = 0; i < N; i++)
     {
         error += (x_update[i] - x[i]) * (x_update[i] - x[i]);
@@ -55,6 +56,7 @@ void solve_v1(std::vector<double> &A, std::vector<double> &b,
     do
     {
         x = x_update;
+#pragma omp parallel for num_threads(num_threads)
         for (size_t i = 0; i < N; i++)
         {
             Ax[i] = 0;
@@ -65,12 +67,13 @@ void solve_v1(std::vector<double> &A, std::vector<double> &b,
             }
         }
 
-        correction(Ax, x, x_update, b);
-        error = calc_error(x, x_update);
+        correction(Ax, x, x_update, b, num_threads);
+        error = calc_error(x, x_update, num_threads);
     } while (error > eps);
 
     std::cout << "I find a solution!" << std::endl;
-    for (int i = 0; i < 20; i++)
+#pragma omp parallel for
+    for (int i = 0; i < 100; i++)
     {
         std::cout << x_update[i] << ' ';
     }
@@ -100,6 +103,7 @@ int main()
         auto end = std::chrono::high_resolution_clock::now();
         std::cout << "Variant 1 Time: "
                   << std::chrono::duration<double>(end - start).count() << " s\n";
+        std::fill(x1.begin(), x1.end(), 0.0);
     }
     // for(int threads : count_of_threads){
     //     // Variant 2
