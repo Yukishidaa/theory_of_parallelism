@@ -79,9 +79,54 @@ void solve_v1(std::vector<double> &A, std::vector<double> &b,
     }
 }
 
-// void solve_v2(std::vector<double>& x, ){
+void solve_v2(std::vector<double> &A, std::vector<double> &b,
+              std::vector<double> &x, int num_threads)
+{
+    std::vector<double> x_update(N, 0.0);
+    std::vector<double> Ax(N, 0.0);
+    double error = 0.0;
 
-// }
+#pragma omp parallel num_threads(num_threads)
+    {
+        do
+        {
+#pragma omp for
+            for (int i = 0; i < N; i++)
+            {
+                x[i] = x_update[i];
+            }
+
+#pragma omp for
+            for (int i = 0; i < N; i++)
+            {
+                for (int j = 0; j < N; j++)
+                {
+                    Ax[i] += A[i * N + j] * x[j];
+                }
+            }
+
+#pragma omp single
+            {
+                error = 0.0;
+            }
+
+#pragma omp for reduction(+ : error)
+            for (int i = 0; i < N; i++)
+            {
+                x_update[i] = x[i] - tau * (Ax[i] - b[i]);
+                error += (x_update[i] - x[i]) * (x_update[i] - x[i]);
+            }
+
+#pragma omp single
+            {
+                error = std::sqrt(error);
+            }
+
+        } while (error > eps);
+    }
+
+    std::cout << "Solution found!" << std::endl;
+}
 
 int main()
 {
@@ -105,14 +150,15 @@ int main()
                   << std::chrono::duration<double>(end - start).count() << " s\n";
         std::fill(x1.begin(), x1.end(), 0.0);
     }
-    // for(int threads : count_of_threads){
-    //     // Variant 2
-    //     auto start = std::chrono::high_resolution_clock::now();
-    //     // solve_variant2(A, b, x2, threads);
-    //     auto end = std::chrono::high_resolution_clock::now();
-    //     std::cout << "Variant 2 Time: "
-    //               << std::chrono::duration<double>(end - start).count() << " s\n";
-    // }
+    for (int threads : count_of_threads)
+    {
+        // Variant 2
+        auto start = std::chrono::high_resolution_clock::now();
+        solve_v2(A, b, x2, threads);
+        auto end = std::chrono::high_resolution_clock::now();
+        std::cout << "Variant 2 Time: "
+                  << std::chrono::duration<double>(end - start).count() << " s\n";
+    }
 
     return 0;
 }
