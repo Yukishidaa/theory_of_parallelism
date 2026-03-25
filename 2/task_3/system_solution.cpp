@@ -70,13 +70,6 @@ void solve_v1(std::vector<double> &A, std::vector<double> &b,
         correction(Ax, x, x_update, b, num_threads);
         error = calc_error(x, x_update, num_threads);
     } while (error > eps);
-
-    std::cout << "I find a solution!" << std::endl;
-#pragma omp parallel for
-    for (int i = 0; i < 100; i++)
-    {
-        std::cout << x_update[i] << ' ';
-    }
 }
 
 void solve_v2(std::vector<double> &A, std::vector<double> &b,
@@ -124,8 +117,6 @@ void solve_v2(std::vector<double> &A, std::vector<double> &b,
 
         } while (error > eps);
     }
-
-    std::cout << "Solution found!" << std::endl;
 }
 
 int main()
@@ -158,6 +149,7 @@ int main()
         auto end = std::chrono::high_resolution_clock::now();
         std::cout << "Variant 2 Time: "
                   << std::chrono::duration<double>(end - start).count() << " s\n";
+        std::fill(x1.begin(), x1.end(), 0.0);
     }
 
     return 0;
