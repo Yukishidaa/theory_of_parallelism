@@ -1,0 +1,16 @@
+Variant 1 Time: 131.136 s
+Variant 1 Time: 66.823 s
+Variant 1 Time: 34.5344 s
+Variant 1 Time: 20.0064 s
+Variant 1 Time: 18.089 s
+Variant 1 Time: 11.6153 s
+Variant 1 Time: 8.30236 s
+Variant 1 Time: 5.51613 s
+Variant 2 Time: 148.442 s
+Variant 2 Time: 78.4652 s
+Variant 2 Time: 38.9312 s
+Variant 2 Time: 23.2087 s
+Variant 2 Time: 20.5518 s
+Variant 2 Time: 10.3681 s
+Variant 2 Time: 8.80302 s
+Variant 2 Time: 7.33831 s
