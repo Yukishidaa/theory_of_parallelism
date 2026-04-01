@@ -5,7 +5,7 @@
 #include <chrono>
 #include <omp.h>
 
-#define N 5000
+#define N 1000
 
 const double tau = 0.000399;
 const double eps = 1e-5;
@@ -142,7 +142,7 @@ void solve_v2(std::vector<double> &A, std::vector<double> &b,
 
 int main()
 {
-    std::vector<double> A(5000 * 5000);
+    std::vector<double> A(1000 * 1000);
     std::vector<double> b(N);
     std::vector<double> x1(N, 0.0);
     std::vector<double> x2(N, 0.0);
@@ -158,6 +158,7 @@ int main()
 
     {
         // Variant 1
+        std::cout << "V1: " << threads << std::endl;
         auto start = std::chrono::high_resolution_clock::now();
         solve_v1(A, b, x1, threads);
         auto end = std::chrono::high_resolution_clock::now();
@@ -169,6 +170,7 @@ int main()
 
     {
         // Variant 2
+        std::cout << "V2: " << threads << std::endl;
         auto start = std::chrono::high_resolution_clock::now();
         solve_v2(A, b, x2, threads);
         auto end = std::chrono::high_resolution_clock::now();
