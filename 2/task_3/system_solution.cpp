@@ -1,4 +1,5 @@
 #include <iostream>
+#include <fstream>
 #include <vector>
 #include <cmath>
 #include <chrono>
@@ -28,6 +29,7 @@ void correction(std::vector<double> &Ax, std::vector<double> &x, std::vector<dou
 {
 #pragma omp parallel for num_threads(num_threads)
     for (size_t i = 0; i < x_update.size(); i++)
+
     {
         x_update[i] = x[i] - tau * (Ax[i] - b[i]);
     }
@@ -38,6 +40,7 @@ double calc_error(std::vector<double> &x, std::vector<double> &x_update, int num
     double error = 0.0;
 #pragma omp parallel for reduction(+ : error) num_threads(num_threads)
     for (int i = 0; i < N; i++)
+
     {
         error += (x_update[i] - x[i]) * (x_update[i] - x[i]);
     }
@@ -54,14 +57,22 @@ void solve_v1(std::vector<double> &A, std::vector<double> &b,
     // calc left part of expression
     double error = 0.0;
     do
+
     {
-        x = x_update;
+#pragma omp parallel for num_threads(num_threads)
+        for (int i = 0; i < N; i++)
+
+        {
+            x[i] = x_update[i];
+        }
 #pragma omp parallel for num_threads(num_threads)
         for (size_t i = 0; i < N; i++)
+
         {
             Ax[i] = 0;
 
             for (size_t j = 0; j < x.size(); j++)
+
             {
                 Ax[i] += A[i * N + j] * x[j];
             }
@@ -69,6 +80,7 @@ void solve_v1(std::vector<double> &A, std::vector<double> &b,
 
         correction(Ax, x, x_update, b, num_threads);
         error = calc_error(x, x_update, num_threads);
+
     } while (error > eps);
 }
 
@@ -80,37 +92,46 @@ void solve_v2(std::vector<double> &A, std::vector<double> &b,
     double error = 0.0;
 
 #pragma omp parallel num_threads(num_threads)
+
     {
         do
+
         {
 #pragma omp for
             for (int i = 0; i < N; i++)
+
             {
                 x[i] = x_update[i];
             }
 
 #pragma omp for
             for (int i = 0; i < N; i++)
+
             {
+                Ax[i] = 0;
                 for (int j = 0; j < N; j++)
+
                 {
                     Ax[i] += A[i * N + j] * x[j];
                 }
             }
 
 #pragma omp single
+
             {
                 error = 0.0;
             }
 
 #pragma omp for reduction(+ : error)
             for (int i = 0; i < N; i++)
+
             {
                 x_update[i] = x[i] - tau * (Ax[i] - b[i]);
                 error += (x_update[i] - x[i]) * (x_update[i] - x[i]);
             }
 
 #pragma omp single
+
             {
                 error = std::sqrt(error);
             }
@@ -131,26 +152,30 @@ int main()
     init_matrix(A);
     init_vector(b);
 
+    std::ofstream out("output.txt");
+
     for (int threads : count_of_threads)
+
     {
         // Variant 1
         auto start = std::chrono::high_resolution_clock::now();
         solve_v1(A, b, x1, threads);
         auto end = std::chrono::high_resolution_clock::now();
-        std::cout << "Variant 1 Time: "
-                  << std::chrono::duration<double>(end - start).count() << " s\n";
+        out << "Variant 1 Time: "
+            << std::chrono::duration<double>(end - start).count() << " s\n";
         std::fill(x1.begin(), x1.end(), 0.0);
     }
     for (int threads : count_of_threads)
+
     {
         // Variant 2
         auto start = std::chrono::high_resolution_clock::now();
         solve_v2(A, b, x2, threads);
         auto end = std::chrono::high_resolution_clock::now();
-        std::cout << "Variant 2 Time: "
-                  << std::chrono::duration<double>(end - start).count() << " s\n";
-        std::fill(x1.begin(), x1.end(), 0.0);
+        out << "Variant 2 Time: "
+            << std::chrono::duration<double>(end - start).count() << " s\n";
+        std::fill(x2.begin(), x2.end(), 0.0);
     }
-
+    out.close();
     return 0;
 }
