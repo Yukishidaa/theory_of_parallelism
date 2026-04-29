@@ -59,13 +59,13 @@ void solve_v1(std::vector<double> &A, std::vector<double> &b,
     do
 
     {
-#pragma omp parallel for num_threads(num_threads) schedule(runtime)
+#pragma omp parallel for num_threads(num_threads) shedule(runtime)
         for (int i = 0; i < N; i++)
 
         {
             x[i] = x_update[i];
         }
-#pragma omp parallel for num_threads(num_threads) schedule(runtime)
+#pragma omp parallel for num_threads(num_threads) shedule(runtime)
         for (size_t i = 0; i < N; i++)
 
         {
@@ -91,20 +91,20 @@ void solve_v2(std::vector<double> &A, std::vector<double> &b,
     std::vector<double> Ax(N, 0.0);
     double error = 0.0;
 
-#pragma omp parallel num_threads(num_threads) schedule(runtime)
+#pragma omp parallel num_threads(num_threads) shedule(runtime)
 
     {
         do
 
         {
-#pragma omp for schedule(runtime)
+#pragma omp for shedule(runtime)
             for (int i = 0; i < N; i++)
 
             {
                 x[i] = x_update[i];
             }
 
-#pragma omp for schedule(runtime)
+#pragma omp for shedule(runtime)
             for (int i = 0; i < N; i++)
 
             {
@@ -122,7 +122,7 @@ void solve_v2(std::vector<double> &A, std::vector<double> &b,
                 error = 0.0;
             }
 
-#pragma omp for reduction(+ : error) schedule(runtime)
+#pragma omp for reduction(+ : error) shedule(runtime)
             for (int i = 0; i < N; i++)
 
             {
