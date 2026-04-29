@@ -5,7 +5,7 @@
 #include <chrono>
 #include <omp.h>
 
-#define N 1000
+#define N 5000
 
 const double tau = 0.000399;
 const double eps = 1e-5;
@@ -59,13 +59,13 @@ void solve_v1(std::vector<double> &A, std::vector<double> &b,
     do
 
     {
-#pragma omp parallel for num_threads(num_threads)
+#pragma omp parallel for num_threads(num_threads) schedule(runtime)
         for (int i = 0; i < N; i++)
 
         {
             x[i] = x_update[i];
         }
-#pragma omp parallel for num_threads(num_threads)
+#pragma omp parallel for num_threads(num_threads) schedule(runtime)
         for (size_t i = 0; i < N; i++)
 
         {
@@ -91,20 +91,20 @@ void solve_v2(std::vector<double> &A, std::vector<double> &b,
     std::vector<double> Ax(N, 0.0);
     double error = 0.0;
 
-#pragma omp parallel num_threads(num_threads)
+#pragma omp parallel num_threads(num_threads) schedule(runtime)
 
     {
         do
 
         {
-#pragma omp for
+#pragma omp for schedule(runtime)
             for (int i = 0; i < N; i++)
 
             {
                 x[i] = x_update[i];
             }
 
-#pragma omp for
+#pragma omp for schedule(runtime)
             for (int i = 0; i < N; i++)
 
             {
@@ -122,7 +122,7 @@ void solve_v2(std::vector<double> &A, std::vector<double> &b,
                 error = 0.0;
             }
 
-#pragma omp for reduction(+ : error)
+#pragma omp for reduction(+ : error) schedule(runtime)
             for (int i = 0; i < N; i++)
 
             {
@@ -142,12 +142,13 @@ void solve_v2(std::vector<double> &A, std::vector<double> &b,
 
 int main()
 {
-    std::vector<double> A(1000 * 1000);
+    std::vector<double> A(N * N);
     std::vector<double> b(N);
     std::vector<double> x1(N, 0.0);
     std::vector<double> x2(N, 0.0);
 
-    std::vector<int> count_of_threads = {1, 2, 4, 7, 8, 16, 20, 40};
+    // std::vector<int> count_of_threads = {1, 2, 4, 7, 8, 16, 20, 40};
+    std::vector<int> count_of_threads = {16};
 
     init_matrix(A);
     init_vector(b);
