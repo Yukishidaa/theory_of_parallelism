@@ -34,7 +34,6 @@ void multiply(const double *matrix, const double *vec, double *res, int start_ro
 
 int main(int argc, char *argv[])
 {
-    // По умолчанию N=20000, или берем из аргументов
     const int N = (argc > 2) ? std::atoi(argv[2]) : 20000;
     const int NUM_THREADS = (argc > 1) ? std::atoi(argv[1]) : 1;
 
