@@ -103,7 +103,7 @@ int main(int argc, char *argv[])
         {
             error = 0.0;
 
-#pragma acc parallel loop collapse(2) reduction(max : error)
+#pragma acc parallel loop gang(256) vector(128) collapse(2) reduction(max : error)
             for (int i = 1; i < N - 1; ++i)
             {
                 for (int j = 1; j < N - 1; ++j)
@@ -118,7 +118,7 @@ int main(int argc, char *argv[])
                 }
             }
 
-#pragma acc parallel loop collapse(2)
+#pragma acc parallel loop gang vector collapse(2)
             for (int i = 0; i < N; ++i)
                 for (int j = 0; j < N; ++j)
                     u[idx(i, j, N)] = u_new[idx(i, j, N)];
