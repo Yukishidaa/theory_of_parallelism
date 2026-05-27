@@ -53,13 +53,6 @@ void print_matrix(double *grid, int N)
 
 int main(int argc, char *argv[])
 {
-#ifdef _OPENACC
-    acc_init(acc_device_nvidia);
-    if (acc_get_device_type() == acc_device_nvidia)
-        std::cout << "GPU NVIDIA используется" << std::endl;
-    else
-        std::cout << "Эмуляция или другой device" << std::endl;
-#endif
     int N = 128;
     int max_iter = 1000000;
     double eps = 1e-6;
