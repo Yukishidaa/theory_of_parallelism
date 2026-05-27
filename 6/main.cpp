@@ -1,5 +1,4 @@
 #include <iostream>
-#include <vector>
 #include <cmath>
 #include <fstream>
 #include <chrono>
@@ -15,7 +14,7 @@ inline int idx(int i, int j, int N)
     return i * N + j;
 }
 
-void initialize_boundaries(vector<double> &grid, int N)
+void initialize_boundaries(double *grid, int N)
 {
     double top_left = 10.0;
     double top_right = 20.0;
@@ -47,9 +46,7 @@ void initialize_boundaries(vector<double> &grid, int N)
     }
 }
 
-void save_matrix(const vector<double> &grid,
-                 int N,
-                 const string &filename)
+void save_matrix(double *grid, int N, const string &filename)
 {
     ofstream out(filename);
 
@@ -64,7 +61,7 @@ void save_matrix(const vector<double> &grid,
     }
 }
 
-void print_matrix(const vector<double> &grid, int N)
+void print_matrix(double *grid, int N)
 {
     for (int i = 0; i < N; i++)
     {
@@ -115,8 +112,14 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    vector<double> grid(N * N, 0.0);
-    vector<double> new_grid(N * N, 0.0);
+    double *grid = new double[N * N];
+    double *new_grid = new double[N * N];
+
+    for (int i = 0; i < N * N; i++)
+    {
+        grid[i] = 0.0;
+        new_grid[i] = 0.0;
+    }
 
     initialize_boundaries(grid, N);
     initialize_boundaries(new_grid, N);
@@ -126,7 +129,7 @@ int main(int argc, char *argv[])
 
     auto start = high_resolution_clock::now();
 
-#pragma acc data copy(grid, new_grid)
+#pragma acc data copy(grid[0 : N * N], new_grid[0 : N * N])
     {
         for (iter = 0; iter < max_iter; iter++)
         {
@@ -153,7 +156,9 @@ int main(int argc, char *argv[])
                 }
             }
 
-            swap(grid, new_grid);
+            double *tmp = grid;
+            grid = new_grid;
+            new_grid = tmp;
 
             if (error < eps)
                 break;
@@ -175,6 +180,9 @@ int main(int argc, char *argv[])
     {
         print_matrix(grid, N);
     }
+
+    delete[] grid;
+    delete[] new_grid;
 
     return 0;
 }
