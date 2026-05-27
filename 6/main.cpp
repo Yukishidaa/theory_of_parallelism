@@ -71,7 +71,7 @@ int main(int argc, char *argv[])
         po::store(po::parse_command_line(argc, argv, desc), vm);
         po::notify(vm);
 
-        if (vm.count("helpp"))
+        if (vm.count("help"))
         {
             cout << desc << endl;
             return 0;
@@ -103,9 +103,10 @@ int main(int argc, char *argv[])
         {
             error = 0.0;
 
-#pragma acc parallel loop gang(256) vector(128) collapse(2) reduction(max : error)
+#pragma acc parallel loop gang reduction(max : error)
             for (int i = 1; i < N - 1; ++i)
             {
+#pragma acc loop vector reduction(max : error)
                 for (int j = 1; j < N - 1; ++j)
                 {
                     u_new[idx(i, j, N)] = 0.25 * (u[idx(i - 1, j, N)] +
@@ -118,10 +119,15 @@ int main(int argc, char *argv[])
                 }
             }
 
-#pragma acc parallel loop gang vector collapse(2)
+#pragma acc parallel loop gang
             for (int i = 0; i < N; ++i)
+            {
+#pragma acc loop vector
                 for (int j = 0; j < N; ++j)
+                {
                     u[idx(i, j, N)] = u_new[idx(i, j, N)];
+                }
+            }
 
             if (error < eps)
                 break;
@@ -160,7 +166,6 @@ int main(int argc, char *argv[])
 
     if (cur != u)
     {
-
         copy(cur, cur + N * N, u);
     }
 #endif
