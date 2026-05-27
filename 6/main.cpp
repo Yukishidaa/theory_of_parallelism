@@ -1,131 +1,102 @@
 #include <iostream>
 #include <cmath>
-#include <fstream>
+#include <cstring>
+#include <cstdlib>
 #include <chrono>
-#include <algorithm>
-#include <boost/program_options.hpp>
-
-using namespace std;
-using namespace std::chrono;
-
-namespace po = boost::program_options;
-
-inline int idx(int i, int j, int N)
-{
-    return i * N + j;
-}
-
-void initialize_boundaries(double *grid, int N)
-{
-    double top_left = 10.0;
-    double top_right = 20.0;
-    double bottom_right = 30.0;
-    double bottom_left = 20.0;
-
-    for (int j = 0; j < N; ++j)
-        grid[idx(0, j, N)] = top_left + (top_right - top_left) * j / (N - 1);
-
-    for (int j = 0; j < N; ++j)
-        grid[idx(N - 1, j, N)] = bottom_left + (bottom_right - bottom_left) * j / (N - 1);
-
-    for (int i = 0; i < N; ++i)
-        grid[idx(i, 0, N)] = top_left + (bottom_left - top_left) * i / (N - 1);
-
-    for (int i = 0; i < N; ++i)
-        grid[idx(i, N - 1, N)] = top_right + (bottom_right - top_right) * i / (N - 1);
-}
-
-void save_matrix(double *grid, int N, const string &filename)
-{
-    ofstream out(filename);
-    for (int i = 0; i < N; ++i)
-    {
-        for (int j = 0; j < N; ++j)
-            out << grid[idx(i, j, N)] << " ";
-        out << "\n";
-    }
-}
-
-void print_matrix(double *grid, int N)
-{
-    for (int i = 0; i < N; ++i)
-    {
-        for (int j = 0; j < N; ++j)
-            printf("%8.2f ", grid[idx(i, j, N)]);
-        cout << endl;
-    }
-}
 
 int main(int argc, char *argv[])
 {
     int N = 128;
-    int max_iter = 1000000;
     double eps = 1e-6;
+    int max_iter = 1000000;
 
-    try
+    for (int i = 1; i < argc; i++)
     {
-        po::options_description desc("Options");
-        desc.add_options()("help,h", "show help")("size", po::value<int>(&N)->default_value(128), "grid size")("iter", po::value<int>(&max_iter)->default_value(1000000), "max iterations")("eps", po::value<double>(&eps)->default_value(1e-6), "accuracy");
-
-        po::variables_map vm;
-        po::store(po::parse_command_line(argc, argv, desc), vm);
-        po::notify(vm);
-
-        if (vm.count("help"))
+        if (strcmp(argv[i], "--size") == 0 && i + 1 < argc)
         {
-            cout << desc << endl;
-            return 0;
+            N = atoi(argv[++i]);
+        }
+        else if (strcmp(argv[i], "--eps") == 0 && i + 1 < argc)
+        {
+            eps = atof(argv[++i]);
+        }
+        else if (strcmp(argv[i], "--max_iter") == 0 && i + 1 < argc)
+        {
+            max_iter = atoi(argv[++i]);
         }
     }
-    catch (const exception &e)
+
+    int size = N + 2;
+
+    double **u = new double *[size];
+    double **un = new double *[size];
+    for (int i = 0; i < size; i++)
     {
-        cerr << "Error: " << e.what() << endl;
-        return 1;
+        u[i] = new double[size];
+        un[i] = new double[size];
+        for (int j = 0; j < size; j++)
+        {
+            u[i][j] = 0.0;
+            un[i][j] = 0.0;
+        }
     }
 
-    double *u = new double[N * N];
-    double *u_new = new double[N * N];
+    u[0][0] = 10.0;
+    u[0][size - 1] = 20.0;
+    u[size - 1][0] = 30.0;
+    u[size - 1][size - 1] = 20.0;
 
-    fill(u, u + N * N, 0.0);
-    fill(u_new, u_new + N * N, 0.0);
-    initialize_boundaries(u, N);
-    initialize_boundaries(u_new, N);
-
-    int iter = 0;
-    double error = 0.0;
-
-    auto start = high_resolution_clock::now();
-
-#ifdef _OPENACC
-#pragma acc data copy(u[0 : N * N], u_new[0 : N * N])
+    for (int j = 1; j < size - 1; j++)
     {
-        for (iter = 0; iter < max_iter; ++iter)
+        double t = (double)j / (size - 1);
+        u[0][j] = 10.0 + (20.0 - 10.0) * t;
+        u[size - 1][j] = 30.0 + (20.0 - 30.0) * t;
+    }
+
+    for (int i = 1; i < size - 1; i++)
+    {
+        double t = (double)i / (size - 1);
+        u[i][0] = 10.0 + (30.0 - 10.0) * t;
+        u[i][size - 1] = 20.0;
+    }
+
+    for (int i = 0; i < size; i++)
+    {
+        for (int j = 0; j < size; j++)
+        {
+            un[i][j] = u[i][j];
+        }
+    }
+
+    auto start = std::chrono::high_resolution_clock::now();
+
+    int iter;
+    double error;
+
+#pragma acc data copy(u[0 : size][0 : size]) create(un[0 : size][0 : size])
+    {
+        for (iter = 0; iter < max_iter; iter++)
         {
             error = 0.0;
 
-#pragma acc parallel loop gang reduction(max : error)
-            for (int i = 1; i < N - 1; ++i)
+#pragma acc parallel loop collapse(2) reduction(max : error)
+            for (int i = 1; i < size - 1; i++)
             {
-#pragma acc loop vector reduction(max : error)
-                for (int j = 1; j < N - 1; ++j)
+                for (int j = 1; j < size - 1; j++)
                 {
-                    u_new[idx(i, j, N)] = 0.25 * (u[idx(i - 1, j, N)] +
-                                                  u[idx(i + 1, j, N)] +
-                                                  u[idx(i, j - 1, N)] +
-                                                  u[idx(i, j + 1, N)]);
-                    double diff = fabs(u_new[idx(i, j, N)] - u[idx(i, j, N)]);
+                    un[i][j] = (u[i - 1][j] + u[i + 1][j] + u[i][j - 1] + u[i][j + 1]) / 4.0;
+                    double diff = fabs(un[i][j] - u[i][j]);
                     if (diff > error)
                         error = diff;
                 }
             }
 
-#pragma acc parallel loop gang
-            for (int i = 0; i < N; ++i)
+#pragma acc parallel loop collapse(2)
+            for (int i = 1; i < size - 1; i++)
             {
-#pragma acc loop vector
-                for (int j = 0; j < N; ++j)
+                for (int j = 1; j < size - 1; j++)
                 {
-                    u[idx(i, j, N)] = u_new[idx(i, j, N)];
+                    u[i][j] = un[i][j];
                 }
             }
 
@@ -133,58 +104,22 @@ int main(int argc, char *argv[])
                 break;
         }
     }
-#else
-    double *cur = u;
-    double *next = u_new;
 
-    for (iter = 0; iter < max_iter; ++iter)
+    auto end = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+
+    std::cout << "Размер: " << N << "x" << N << std::endl;
+    std::cout << "Время: " << duration.count() << " мс" << std::endl;
+    std::cout << "Итерации: " << iter << std::endl;
+    std::cout << "Ошибка: " << error << std::endl;
+
+    for (int i = 0; i < size; i++)
     {
-        error = 0.0;
-
-#ifdef _OPENMP
-#pragma omp parallel for collapse(2) reduction(max : error)
-#endif
-        for (int i = 1; i < N - 1; ++i)
-        {
-            for (int j = 1; j < N - 1; ++j)
-            {
-                next[idx(i, j, N)] = 0.25 * (cur[idx(i - 1, j, N)] +
-                                             cur[idx(i + 1, j, N)] +
-                                             cur[idx(i, j - 1, N)] +
-                                             cur[idx(i, j + 1, N)]);
-                double diff = fabs(next[idx(i, j, N)] - cur[idx(i, j, N)]);
-                if (diff > error)
-                    error = diff;
-            }
-        }
-
-        swap(cur, next);
-
-        if (error < eps)
-            break;
+        delete[] u[i];
+        delete[] un[i];
     }
-
-    if (cur != u)
-    {
-        copy(cur, cur + N * N, u);
-    }
-#endif
-
-    auto end = high_resolution_clock::now();
-    double elapsed = duration_cast<milliseconds>(end - start).count();
-
-    cout << "Iterations: " << iter << endl;
-    cout << "Error: " << error << endl;
-    cout << "Time: " << elapsed << " ms" << endl;
-
-    save_matrix(u, N, "result.txt");
-
-    if (N == 10 || N == 13)
-    {
-        print_matrix(u, N);
-    }
-
     delete[] u;
-    delete[] u_new;
+    delete[] un;
+
     return 0;
 }
